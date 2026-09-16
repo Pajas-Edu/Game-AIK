@@ -1,0 +1,1048 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Gim Edukasi PAUD - Drag & Drop</title>
+    <!-- Tailwind CSS untuk tata letak modern -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* === DESIGN TOKENS & CSS VARIABLES === */
+        :root {
+            --primary: #FF6B6B;
+            --secondary: #4ECDC4;
+            --accent: #FFE66D;
+            --bg-color: #F7FFF7;
+            --text-dark: #2F3542;
+            --shadow: 0 10px 20px rgba(0,0,0,0.15);
+            --radius-lg: 24px;
+            --radius-full: 50px;
+            --board-bg: linear-gradient(135deg, #a8edea 0%, #fed6e3 100%);
+        }
+
+        /* === GLOBAL STYLES === */
+        * {
+            box-sizing: border-box;
+            user-select: none;
+            -webkit-user-select: none;
+            touch-action: none; /* Mencegah layar tergulung saat drag & drop */
+        }
+
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: 'Comic Sans MS', 'Chalkboard SE', 'Fredoka One', sans-serif;
+            background: linear-gradient(135deg, #0077b6 0%, #00b4d8 50%, #90e0ef 100%);
+            color: var(--text-dark);
+            height: 100vh;
+            width: 100vw;
+            overflow: hidden;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        /* === 16:9 RESPONSIVE CONTAINER === */
+        #rotate-message {
+            display: none;
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: var(--primary); color: white; z-index: 10000;
+            flex-direction: column; justify-content: center; align-items: center; text-align: center;
+            font-size: 1.5rem;
+        }
+        .rotate-icon { font-size: 6rem; animation: rotatePhone 2s infinite ease-in-out; margin-bottom: 20px; }
+        @keyframes rotatePhone { 0%, 10% { transform: rotate(0deg); } 40%, 60% { transform: rotate(-90deg); } 90%, 100% { transform: rotate(0deg); } }
+        
+        @media (orientation: portrait) {
+            #rotate-message { display: flex; }
+            .app-wrapper { display: none !important; }
+        }
+
+        .app-wrapper {
+            width: 100vw; height: 100vh;
+            display: flex; justify-content: center; align-items: center;
+            background: linear-gradient(135deg, #0077b6 0%, #00b4d8 50%, #90e0ef 100%);
+        }
+
+        .game-board {
+            width: 100%; height: 100%;
+            max-width: calc(100vh * 16 / 9);
+            max-height: calc(100vw * 9 / 16);
+            aspect-ratio: 16 / 9;
+            position: relative;
+            background: var(--board-bg);
+            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+            border-radius: 0px;
+            overflow: hidden;
+            container-type: size;
+        }
+
+        /* === SCREEN MANAGEMENT === */
+        .screen {
+            display: none; width: 100%; height: 100%;
+            flex-direction: column; align-items: center; justify-content: center;
+            padding: 2cqh 2cqw; position: absolute; top: 0; left: 0;
+            z-index: 10;
+        }
+        .screen.active { display: flex; animation: fadeIn 0.5s ease-in-out; }
+        @keyframes fadeIn { from { opacity: 0; transform: scale(0.95); } to { opacity: 1; transform: scale(1); } }
+
+        /* === HOME SPLASH SCREEN === */
+        #screen-home {
+            background: linear-gradient(135deg, #0077b6 0%, #00b4d8 50%, #90e0ef 100%) !important;
+            position: relative;
+            overflow: hidden;
+        }
+        #screen-home h1 {
+            color: white !important;
+            text-shadow: 0.5cqh 0.5cqh 0px #03045e, 1cqh 1cqh 2cqh rgba(0,0,0,0.2);
+            z-index: 5;
+            font-size: 7.5cqh;
+            margin-bottom: 4cqh;
+        }
+        #screen-home .btn, #screen-home .controls-row {
+            z-index: 5;
+        }
+        .accessory {
+            position: absolute;
+            pointer-events: none; /* Klik tembus */
+            z-index: 1;
+            filter: drop-shadow(0 1cqh 1.5cqh rgba(0,0,0,0.15));
+            animation: floatSlow 5s ease-in-out infinite alternate;
+            will-change: transform;
+        }
+        @keyframes floatSlow {
+            0% { transform: translateY(0) rotate(0deg); }
+            100% { transform: translateY(-3cqh) rotate(10deg); }
+        }
+
+        /* === WIN / END SCREEN === */
+        #screen-win {
+            background: linear-gradient(135deg, #FF9a9e 0%, #fecfef 99%, #fecfef 100%) !important;
+            position: relative;
+            overflow: hidden;
+        }
+        #screen-win h1 {
+            color: white !important;
+            text-shadow: 0.5cqh 0.5cqh 0px #ff4757, 0.8cqh 0.8cqh 2cqh rgba(0,0,0,0.2);
+            z-index: 5;
+            font-size: 7.5cqh;
+        }
+        #screen-win .btn {
+            z-index: 5;
+        }
+        .win-accessory {
+            position: absolute;
+            pointer-events: none;
+            z-index: 2;
+            filter: drop-shadow(0 1.5cqh 2cqh rgba(0,0,0,0.2));
+            animation: winBounce 3s ease-in-out infinite alternate;
+            will-change: transform;
+        }
+        @keyframes winBounce {
+            0% { transform: translateY(0) scale(1) rotate(0deg); }
+            50% { transform: translateY(-3cqh) scale(1.1) rotate(-5deg); }
+            100% { transform: translateY(-1.5cqh) scale(1) rotate(10deg); }
+        }
+
+        /* === TYPOGRAPHY & BUTTONS === */
+        h2 { font-size: 5.5cqh; margin-bottom: 3.5cqh; }
+
+        .btn {
+            background-color: var(--primary); color: white; border: 0.5cqh solid white;
+            padding: 2.5cqh 5cqh; font-size: 3.5cqh; font-weight: bold;
+            border-radius: var(--radius-full); cursor: pointer; box-shadow: var(--shadow), 0 1cqh 0 #cc5555;
+            transition: all 0.2s; display: flex; align-items: center; gap: 2cqh;
+        }
+        .btn:active { transform: translateY(1cqh); box-shadow: 0 0px 0 #cc5555; }
+        .btn-secondary { background-color: var(--secondary); box-shadow: var(--shadow), 0 1cqh 0 #3db3ab; }
+        .btn-secondary:active { box-shadow: 0 0px 0 #3db3ab; }
+        .btn-accent { background-color: var(--accent); color: var(--text-dark); box-shadow: var(--shadow), 0 1cqh 0 #d9c45c; }
+        .btn-accent:active { box-shadow: 0 0px 0 #d9c45c; }
+
+        /* === TOP BAR === */
+        .top-bar {
+            width: 100%; padding: 2cqh 4cqh; display: flex; justify-content: space-between;
+            align-items: center; position: absolute; top: 0; left: 0; 
+            background: transparent; 
+            box-shadow: none; 
+            z-index: 100;
+            height: 12cqh;
+        }
+        .controls { display: flex; gap: 2cqh; }
+        
+        .icon-btn {
+            background: white; border: none; width: 8cqh; height: 8cqh; border-radius: 50%;
+            font-size: 3.5cqh; cursor: pointer; display: flex; align-items: center; justify-content: center;
+            box-shadow: 0 0.8cqh 0 #ccc, 0 1.2cqh 2cqh rgba(0,0,0,0.1); transition: all 0.2s;
+        }
+        .icon-btn:active { transform: translateY(0.8cqh); box-shadow: 0 0px 0 #ccc; }
+
+        /* MODIFIKASI NAV ATAS: PUTIH DENGAN GARIS TEBAL HIJAU */
+        .top-bar .icon-btn {
+            background: #ffffff !important;
+            border: 0.6cqh solid #2ecc71 !important;
+            box-shadow: 0 0.6cqh 1.2cqh rgba(0,0,0,0.15), inset 0 -0.4cqh 0 #e2e8f0;
+            color: #2c3e50;
+            text-shadow: none;
+            transition: all 0.15s ease-out;
+        }
+        .top-bar .icon-btn:active {
+            background: #f1f2f6 !important;
+            transform: translateY(0.4cqh);
+            box-shadow: 0 0.2cqh 0.4cqh rgba(0,0,0,0.1);
+        }
+
+        /* === GAMEPLAY AREA & VIVID BACKGROUND === */
+        .game-area { display: flex; flex-direction: column; width: 100%; height: 100%; padding-top: 13cqh; padding-bottom: 2cqh; justify-content: space-between; }
+        
+        #screen-game {
+            background: linear-gradient(135deg, #a8f8b3 0%, #d4fc79 100%) !important; /* Latar belakang hijau muda segar saat membuka game */
+        }
+
+        .targets-container, .draggables-container {
+            display: flex; flex-direction: row; justify-content: space-between; align-items: center; width: 100%; padding: 0.5cqh 2cqw;
+        }
+        
+        .targets-container { 
+            background: rgba(255, 255, 255, 0.92); /* Latar target putih solid lembut agar gambar sangat kontras & jelas */
+            border-bottom: 0.8cqh dashed rgba(255, 255, 255, 0.9);
+            border-radius: 3cqh; 
+            margin: 0; 
+            width: 100%;
+            box-shadow: 0 8px 25px rgba(0,0,0,0.12), inset 0 0 15px rgba(255, 255, 255, 0.8);
+        }
+        .draggables-container { 
+            background: rgba(255, 255, 255, 0.35); /* Lapisan transparan ramah mata di area bawah */
+            border-radius: 3cqh;
+            margin: 0;
+            width: 100%;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.08);
+        }
+
+        /* Drop Zone */
+        .drop-zone {
+            width: 15cqh; height: 15cqh;
+            background-color: rgba(255, 255, 255, 0.95); 
+            border: 0.6cqh dashed #ff6b6b;
+            border-radius: 50%;
+            display: flex; align-items: center; justify-content: center; font-size: 7.5cqh;
+            color: rgba(0, 0, 0, 0.25); transition: all 0.3s ease; 
+            box-shadow: inset 0 0.6cqh 1.2cqh rgba(0,0,0,0.1), 0 0 15px rgba(255, 107, 107, 0.4), 0 0 8px rgba(255,255,255,0.8);
+        }
+        /* Memperluas area tangkap target agar lebih mudah terpasang (snap) */
+        .drop-zone {
+            position: relative;
+        }
+        .drop-zone::after {
+            content: '';
+            position: absolute;
+            top: -20px; left: -20px; right: -20px; bottom: -20px;
+            z-index: 5;
+        }
+        .drop-zone.hovered { 
+            background-color: rgba(255, 255, 255, 1); 
+            border-color: #2ecc71;
+            transform: scale(1.15) translateY(-1cqh); 
+            color: rgba(0,0,0,0.4); 
+            box-shadow: 0 1.5cqh 2.5cqh rgba(0,0,0,0.25), 0 0 25px rgba(46, 204, 113, 0.7); 
+        }
+        .drop-zone.filled { border: none; background: rgba(255,255,255,0.6); box-shadow: none; }
+
+        .drop-zone svg, .drag-item svg {
+            pointer-events: none;
+            display: block;
+        }
+
+        /* Drag Item */
+        .drag-item {
+            width: 15cqh; height: 15cqh;
+            background: linear-gradient(145deg, #ffffff, #f0f0f0); border: 0.6cqh solid; border-radius: 50%;
+            display: flex; align-items: center; justify-content: center; font-size: 7.5cqh; font-weight: bold;
+            cursor: grab; box-shadow: 0 1cqh 0 rgba(0,0,0,0.15), 0 1.2cqh 1.5cqh rgba(0,0,0,0.15);
+            position: relative; z-index: 50; touch-action: none; transition: transform 0.15s ease-out;
+        }
+        
+        .drag-item:active { cursor: grabbing; box-shadow: 0 0.6cqh 0 rgba(0,0,0,0.12), 0 0.8cqh 1cqh rgba(0,0,0,0.18); transform: translateY(0.6cqh) scale(0.95); }
+        
+        .drag-item.dragging {
+            z-index: 9999 !important;
+            box-shadow: 0 2.5cqh 4cqh rgba(0,0,0,0.3) !important;
+            transition: none !important;
+        }
+        
+        .drag-item.snapped {
+            position: relative; z-index: 40; box-shadow: none; cursor: default;
+            border: 0.6cqh solid transparent; background: transparent;
+            font-size: 8.5cqh; animation: popIn 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            pointer-events: none;
+        }
+
+        /* Grid 10 Baris (Kombinasi 2 Baris Presisi dengan jarak vertikal merenggang proporsional mengisi ruang tengah) */
+        .game-area.many-items .targets-container, 
+        .game-area.many-items .draggables-container { 
+            display: grid;
+            grid-template-columns: repeat(5, 1fr);
+            gap: 9cqh 2cqw;
+            justify-items: center;
+            align-items: center;
+            width: 100%;
+            padding: 2.5cqh 1.5cqw;
+        }
+        
+        .game-area.many-items .drop-zone, 
+        .game-area.many-items .drag-item { 
+            width: 12.2cqh;
+            height: 12.2cqh; 
+            border-width: 0.5cqh; 
+            font-size: 6cqh;
+        }
+        
+        .game-area.many-items .drag-item { box-shadow: 0 0.8cqh 0 rgba(0,0,0,0.15), 0 1cqh 1.2cqh rgba(0,0,0,0.15); }
+        .game-area.many-items .drag-item:active { box-shadow: 0 0.4cqh 0 rgba(0,0,0,0.15), 0 0.5cqh 0.8cqh rgba(0,0,0,0.2) ; transform: translateY(0.4cqh) scale(0.95); }
+        .game-area.many-items .drag-item.snapped { font-size: 7cqh; }
+
+        @keyframes popIn { 0% { transform: scale(0.5); } 50% { transform: scale(1.2); } 100% { transform: scale(1); } }
+        
+        .shake-anim { animation: shake 0.4s cubic-bezier(.36,.07,.19,.97) both; border-color: #ff4757 !important; }
+        @keyframes shake { 10%, 90% { transform: translate3d(-0.4cqh, 0, 0); } 20%, 80% { transform: translate3d(0.6cqh, 0, 0); } 30%, 50%, 70% { transform: translate3d(-1cqh, 0, 0); } 40%, 60% { transform: translate3d(1cqh, 0, 0); } }
+
+        /* Partikel Kemenangan */
+        .particle { position: absolute; pointer-events: none; width: 40px; height: 40px; font-size: 35px; z-index: 1000; display: flex; align-items: center; justify-content: center; animation: particleOut 0.8s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards; }
+        @keyframes particleOut { 0% { transform: translate(0, 0) scale(0.5) rotate(0deg); opacity: 1; } 80% { opacity: 1; } 100% { transform: translate(var(--tx), var(--ty)) scale(1.5) rotate(var(--rot)); opacity: 0; } }
+
+        /* === MENU KATEGORI: 2 BARIS ESTETIK & PENUH === */
+        .category-grid { 
+            display: grid; 
+            grid-template-columns: repeat(3, 1fr); 
+            gap: 2cqh 2.5cqw; 
+            width: 90%;
+            max-width: 950px;
+            justify-items: center; 
+            align-items: center; 
+        }
+        #screen-category { 
+            background: linear-gradient(135deg, #03045e 0%, #0077b6 50%, #00b4d8 100%) !important; 
+            position: relative;
+            overflow: hidden;
+        }
+        #screen-category h2 { 
+            color: #ffffff !important; 
+            text-shadow: 0.3cqh 0.3cqh 0.6cqh rgba(0,0,0,0.4); 
+            font-size: 4.8cqh; 
+            margin-bottom: 2cqh; 
+            z-index: 5;
+        }
+
+        .cat-card { 
+            background: rgba(255,255,255,0.95); border-radius: 2.2cqh; box-shadow: 0 1.2cqh 0 rgba(0,0,0,0.18), 0 0 20px rgba(255,255,255,0.2); 
+            text-align: center; cursor: pointer; transition: transform 0.2s, box-shadow 0.2s; border: 0.4cqh solid rgba(255,255,255,0.8); 
+            width: 100%; height: 18.5cqh; display: flex; flex-direction: column; align-items: center; 
+            justify-content: center; gap: 0.6cqh; padding: 1cqh; 
+            z-index: 5;
+        }
+        .cat-card:hover { transform: translateY(-0.5cqh); box-shadow: 0 1.5cqh 0 rgba(0,0,0,0.2), 0 0 25px rgba(255,255,255,0.4); }
+        .cat-card:active { transform: translateY(0.8cqh); box-shadow: 0 0.4cqh 0 rgba(0,0,0,0.15); }
+        .cat-card .icon { font-size: 6.5cqh; margin: 0; line-height: 1; }
+        .cat-card h3 { margin: 0; font-size: 2cqh; color: var(--text-dark); line-height: 1.2; word-wrap: break-word; font-weight: bold; }
+        
+        .cat-angka { border-color: var(--primary); } .cat-angka .icon { color: var(--primary); }
+        .cat-huruf { border-color: var(--secondary); } .cat-huruf .icon { color: var(--secondary); }
+        .cat-bangun { border-color: var(--accent); }
+        .cat-warna { border-color: #e67e22; } .cat-warna .icon { color: #e67e22; }
+        .cat-hijaiyah { border-color: #1abc9c; } .cat-hijaiyah .icon { color: #1abc9c; }
+        .cat-hewan { border-color: #ff9ff3; } .cat-hewan .icon { color: #ff9ff3; }
+
+        @media (max-width: 768px) { 
+            .category-grid { gap: 1.2cqh; 2cqw; } 
+            .cat-card { height: 17cqh; padding: 0.8cqh; } 
+            .cat-card h3 { font-size: 1.7cqh; } 
+            .cat-card .icon { font-size: 5.5cqh; }
+        }
+        
+        #instruction-modal, #leaderboard-modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); z-index: 999; justify-content: center; align-items: center; }
+        .modal-content { background: white; padding: 40px; border-radius: var(--radius-lg); text-align: center; max-width: 600px; font-size: 1.5rem; width: 90%; max-height: 85vh; overflow-y: auto; }
+    </style>
+</head>
+<body>
+
+    <!-- DEVICE ORIENTATION WARNING -->
+    <div id="rotate-message">
+        <div class="rotate-icon">📱</div>
+        <h2>Mohon Putar Perangkat Anda</h2>
+        <p>Gim ini dirancang untuk layar mendatar (Landscape)</p>
+    </div>
+
+    <!-- MAIN GAME APP WRAPPER -->
+    <div class="app-wrapper">
+        <div class="game-board" id="game-board">
+            
+            <!-- SCREEN 1: HOME SPLASH -->
+            <div id="screen-home" class="screen active">
+                <div class="accessory" style="top: 10%; left: 8%; font-size: clamp(2rem, 6vh, 4rem); animation-delay: 0s;">🎈</div>
+                <div class="accessory" style="top: 15%; right: 10%; font-size: clamp(1.8rem, 5vh, 3.5rem); animation-delay: 1.5s;">📘</div>
+                <div class="accessory" style="bottom: 12%; left: 12%; font-size: clamp(1.8rem, 5vh, 3.5rem); animation-delay: 0.7s;">✏️</div>
+                <div class="accessory" style="bottom: 15%; right: 12%; font-size: clamp(2rem, 6vh, 4rem); animation-delay: 2.2s;">🥄</div>
+                
+                <h1>🌟 Mari Mencocokkan! 🌟</h1>
+                <button class="btn" onclick="startApp()">▶️ MULAI BERMAIN</button>
+                <div class="controls-row" style="margin-top: 40px; display: flex; gap: 20px;">
+                    <button class="icon-btn" onclick="toggleFullscreen()" title="Layar Penuh">🔲</button>
+                    <button class="icon-btn" id="btn-sound-home" onclick="toggleSound()" title="Suara">🔊</button>
+                    <button class="icon-btn" onclick="showInstructions()" title="Panduan Guru">❔</button>
+                    <button class="icon-btn" onclick="showLeaderboard()" title="Papan Peringkat">🏆</button>
+                </div>
+            </div>
+
+            <!-- SCREEN 2: CATEGORY SELECTION (2 BARIS DENGAN AKSESORIS PENGHIAS) -->
+            <div id="screen-category" class="screen">
+                <!-- Aksesoris Penghias Latar Menu Pilihan yang Lebih Kaya & Ceria -->
+                <div class="accessory" style="top: 6%; left: 4%; font-size: clamp(2rem, 5vh, 4rem); animation-delay: 0s;">🚜</div>
+                <div class="accessory" style="top: 10%; right: 5%; font-size: clamp(2rem, 5vh, 4rem); animation-delay: 1.2s;">✈️</div>
+                <div class="accessory" style="top: 25%; left: 2%; font-size: clamp(1.8rem, 4.5vh, 3.5rem); animation-delay: 0.5s;">🎈</div>
+                <div class="accessory" style="top: 30%; right: 3%; font-size: clamp(1.8rem, 4.5vh, 3.5rem); animation-delay: 2s;">🧸</div>
+                <div class="accessory" style="bottom: 8%; left: 6%; font-size: clamp(2rem, 5vh, 4rem); animation-delay: 0.8s;">🚀</div>
+                <div class="accessory" style="bottom: 12%; right: 7%; font-size: clamp(2rem, 5vh, 4rem); animation-delay: 1.5s;">🚂</div>
+                <div class="accessory" style="bottom: 25%; left: 1%; font-size: clamp(1.5rem, 4vh, 3rem); animation-delay: 2.5s;">⭐</div>
+                <div class="accessory" style="bottom: 22%; right: 2%; font-size: clamp(1.5rem, 4vh, 3rem); animation-delay: 0.3s;">🎨</div>
+
+                <h2>Pilih Permainanmu!</h2>
+                <div class="category-grid">
+                    <div class="cat-card cat-angka" onclick="initGame('angka')">
+                        <div class="icon">🔢</div><h3>ANGKA</h3>
+                    </div>
+                    <div class="cat-card cat-huruf" onclick="initGame('huruf')">
+                        <div class="icon">🔤</div><h3>HURUF</h3>
+                    </div>
+                    <div class="cat-card cat-hijaiyah" onclick="initGame('hijaiyah')">
+                        <div class="icon" style="font-size: 5cqh;">ا ب ت</div><h3>HIJAIYAH</h3>
+                    </div>
+                    <div class="cat-card cat-hewan" onclick="initGame('hewan')">
+                        <div class="icon">🐼</div><h3>HEWAN</h3>
+                    </div>
+                    <div class="cat-card cat-bangun" onclick="initGame('bangun')">
+                        <div class="icon">🔺</div><h3>BANGUN DATAR</h3>
+                    </div>
+                    <div class="cat-card cat-warna" onclick="initGame('warna')">
+                        <div class="icon">🎨</div><h3>WARNA</h3>
+                    </div>
+                </div>
+                <button class="btn btn-secondary" style="margin-top: 2cqh; padding: 1.2cqh 3cqw; font-size: 2.8cqh; z-index: 5;" onclick="navTo('home')">🏠 Kembali</button>
+            </div>
+
+            <!-- SCREEN 3: GAMEPLAY -->
+            <div id="screen-game" class="screen" style="padding: 0;">
+                <div class="top-bar">
+                    <!-- Navigasi Sisi Kiri: Home, Back, Reset -->
+                    <div class="controls">
+                        <button class="icon-btn" onclick="navTo('home')" title="Halaman Awal">🏠</button>
+                        <button class="icon-btn" onclick="navTo('category')" title="Kembali">⬅️</button>
+                        <button class="icon-btn" onclick="resetCurrentGame()" title="Acak / Ulang Sesi">🔀</button>
+                    </div>
+                    <!-- Navigasi Sisi Kanan: Fullscreen, Suara -->
+                    <div class="controls">
+                        <button class="icon-btn" onclick="toggleFullscreen()" title="Layar Penuh">🔲</button>
+                        <button class="icon-btn" id="btn-sound-game" onclick="toggleSound()">🔊</button>
+                    </div>
+                </div>
+
+                <div class="game-area">
+                    <div class="targets-container" id="targets-container"></div>
+                    <div class="draggables-container" id="draggables-container"></div>
+                </div>
+            </div>
+
+            <!-- SCREEN 4: WIN / END SCREEN -->
+            <div id="screen-win" class="screen">
+                <div class="win-accessory" style="top: 8%; left: 6%; font-size: clamp(3rem, 10vh, 6.5rem); animation-delay: 0s;">🐼</div>
+                <div class="win-accessory" style="top: 12%; right: 8%; font-size: clamp(2.8rem, 9vh, 6rem); animation-delay: 1.2s;">🦁</div>
+                <div class="win-accessory" style="bottom: 10%; left: 8%; font-size: clamp(3rem, 10vh, 6.5rem); animation-delay: 0.5s;">🐰</div>
+                <div class="win-accessory" style="bottom: 12%; right: 10%; font-size: clamp(2.8rem, 9vh, 6rem); animation-delay: 1.8s;">🦄</div>
+
+                <h1 style="font-size: 5rem; margin-bottom: 0; z-index: 5;">🎉</h1>
+                <h1 style="z-index: 5;">HEBAT SEKALI!</h1>
+                
+                <!-- Input Penyimpanan Skor Awan -->
+                <div class="bg-white p-4 rounded-xl shadow-lg my-4 z-10 w-80 text-lg flex flex-col gap-2">
+                    <p id="name-warning" class="text-red-500 text-sm font-bold text-center hidden"></p>
+                    <input type="text" id="player-name" placeholder="Tulis namamu disini..." class="p-2 border-2 border-pink-400 rounded-lg text-center outline-none">
+                    <button class="bg-pink-500 hover:bg-pink-600 text-white font-bold py-2 rounded-lg transition" onclick="saveScoreCloud()">☁️ Simpan Skor ke Awan</button>
+                </div>
+
+                <div style="display: flex; gap: 20px; z-index: 5;">
+                    <button class="btn btn-secondary" onclick="resetCurrentGame()">🔀 MAIN LAGI</button>
+                    <button class="btn btn-accent" onclick="navTo('category')">🏠 GANTI MAINAN</button>
+                </div>
+            </div>
+
+            <!-- INSTRUCTION MODAL -->
+            <div id="instruction-modal">
+                <div class="modal-content text-left">
+                    <h2 class="text-center font-bold text-red-500 text-3xl mb-4">Panduan Guru & Pendamping</h2>
+                    <p class="mb-2">1. Ketuk tombol <b>Mulai Bermain</b> untuk mode layar penuh interaktif.</p>
+                    <p class="mb-2">2. Pendamping dapat membimbing anak memilih kategori yang ingin dipelajari (Angka, Huruf, Hijaiyah, Hewan, Bangun Datar, atau Warna).</p>
+                    <p class="mb-2">3. Bimbing anak untuk **menyeret (drag)** item di baris bawah dan **meletakkannya (drop)** ke dalam sasaran yang cocok di atas.</p>
+                    <p class="mb-4">4. Di akhir permainan, tuliskan nama anak dan simpan ke Cloud untuk melihat Papan Peringkat global!</p>
+                    <button class="w-full bg-red-500 hover:bg-red-600 text-white font-bold py-3 rounded-xl transition text-xl" onclick="document.getElementById('instruction-modal').style.display='none'">TUTUP</button>
+                </div>
+            </div>
+
+            <!-- LEADERBOARD MODAL -->
+            <div id="leaderboard-modal">
+                <div class="modal-content">
+                    <h2 class="font-bold text-teal-600 text-3xl mb-4">🏆 Papan Peringkat Global 🏆</h2>
+                    <div id="leaderboard-list" class="flex flex-col gap-2 mb-6 max-h-60 overflow-y-auto pr-2 text-xl">
+                        <p class="text-gray-500 text-center">Sedang memuat peringkat...</p>
+                    </div>
+                    <button class="w-full bg-teal-500 hover:bg-teal-600 text-white font-bold py-3 rounded-xl transition text-xl" onclick="document.getElementById('leaderboard-modal').style.display='none'">TUTUP</button>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+    <script>
+        /* === GAME DATA === */
+        const GAME_DATA = {
+            angka: [
+                { id: '1', targetIcon: '<span style="opacity: 0.95;">1</span>', dragIcon: '1', color: '#FF6B6B' }, 
+                { id: '2', targetIcon: '<span style="opacity: 0.95;">2</span>', dragIcon: '2', color: '#4ECDC4' },
+                { id: '3', targetIcon: '<span style="opacity: 0.95;">3</span>', dragIcon: '3', color: '#FFA502' }, 
+                { id: '4', targetIcon: '<span style="opacity: 0.95;">4</span>', dragIcon: '4', color: '#FF6B81' },
+                { id: '5', targetIcon: '<span style="opacity: 0.95;">5</span>', dragIcon: '5', color: '#A55EEA' }, 
+                { id: '6', targetIcon: '<span style="opacity: 0.95;">6</span>', dragIcon: '6', color: '#FFC312' },
+                { id: '7', targetIcon: '<span style="opacity: 0.95;">7</span>', dragIcon: '7', color: '#C4E538' }, 
+                { id: '8', targetIcon: '<span style="opacity: 0.95;">8</span>', dragIcon: '8', color: '#12CBC4' },
+                { id: '9', targetIcon: '<span style="opacity: 0.95;">9</span>', dragIcon: '9', color: '#FDA7DF' }, 
+                { id: '10', targetIcon: '<span style="opacity: 0.95;">10</span>', dragIcon: '10', color: '#ED4C67' }
+            ],
+            huruf: [
+                { id: 'A', targetIcon: '<span style="opacity: 0.95;">A</span>', dragIcon: 'A', color: '#7BED9F' }, 
+                { id: 'B', targetIcon: '<span style="opacity: 0.95;">B</span>', dragIcon: 'B', color: '#70A1FF' },
+                { id: 'C', targetIcon: '<span style="opacity: 0.95;">C</span>', dragIcon: 'C', color: '#FF7F50' }, 
+                { id: 'D', targetIcon: '<span style="opacity: 0.95;">D</span>', dragIcon: 'D', color: '#FF6B81' },
+                { id: 'E', targetIcon: '<span style="opacity: 0.95;">E</span>', dragIcon: 'E', color: '#A55EEA' }, 
+                { id: 'F', targetIcon: '<span style="opacity: 0.95;">F</span>', dragIcon: 'F', color: '#FFC312' },
+                { id: 'G', targetIcon: '<span style="opacity: 0.95;">G</span>', dragIcon: 'G', color: '#C4E538' }, 
+                { id: 'H', targetIcon: '<span style="opacity: 0.95;">H</span>', dragIcon: 'H', color: '#12CBC4' },
+                { id: 'I', targetIcon: '<span style="opacity: 0.95;">I</span>', dragIcon: 'I', color: '#FDA7DF' }, 
+                { id: 'J', targetIcon: '<span style="opacity: 0.95;">J</span>', dragIcon: 'J', color: '#ED4C67' }
+            ],
+            hijaiyah: [
+                { id: 'alif', targetIcon: '<span style="opacity: 0.95;">ا</span>', dragIcon: 'ا', color: '#FF6B6B' },
+                { id: 'ba', targetIcon: '<span style="opacity: 0.95;">ب</span>', dragIcon: 'ب', color: '#4ECDC4' },
+                { id: 'ta', targetIcon: '<span style="opacity: 0.95;">ت</span>', dragIcon: 'ت', color: '#FFA502' },
+                { id: 'tsa', targetIcon: '<span style="opacity: 0.95;">ث</span>', dragIcon: 'ث', color: '#FF6B81' },
+                { id: 'jim', targetIcon: '<span style="opacity: 0.95;">ج</span>', dragIcon: 'ج', color: '#A55EEA' },
+                { id: 'ha', targetIcon: '<span style="opacity: 0.95;">ح</span>', dragIcon: 'ح', color: '#FFC312' },
+                { id: 'kha', targetIcon: '<span style="opacity: 0.95;">خ</span>', dragIcon: 'خ', color: '#C4E538' },
+                { id: 'dal', targetIcon: '<span style="opacity: 0.95;">د</span>', dragIcon: 'د', color: '#12CBC4' },
+                { id: 'dzal', targetIcon: '<span style="opacity: 0.95;">ذ</span>', dragIcon: 'ذ', color: '#FDA7DF' },
+                { id: 'ra', targetIcon: '<span style="opacity: 0.95;">ر</span>', dragIcon: 'ر', color: '#ED4C67' }
+            ],
+            hewan: [
+                { id: 'kucing', targetIcon: '<span style="opacity: 0.95;">🐱</span>', dragIcon: '🐱', color: '#FF9F43' },
+                { id: 'anjing', targetIcon: '<span style="opacity: 0.95;">🐶</span>', dragIcon: '🐶', color: '#8B4513' },
+                { id: 'sapi', targetIcon: '<span style="opacity: 0.95;">🐮</span>', dragIcon: '🐮', color: '#2F3542' },
+                { id: 'gajah', targetIcon: '<span style="opacity: 0.95;">🐘</span>', dragIcon: '🐘', color: '#747D8C' },
+                { id: 'singa', targetIcon: '<span style="opacity: 0.95;">🦁</span>', dragIcon: '🦁', color: '#FFA502' },
+                { id: 'monyet', targetIcon: '<span style="opacity: 0.95;">🐒</span>', dragIcon: '🐒', color: '#8B4513' },
+                { id: 'kelinci', targetIcon: '<span style="opacity: 0.95;">🐰</span>', dragIcon: '🐰', color: '#FF6B81' },
+                { id: 'bebek', targetIcon: '<span style="opacity: 0.95;">🦆</span>', dragIcon: '🦆', color: '#FBC531' },
+                { id: 'burung', targetIcon: '<span style="opacity: 0.95;">🐦</span>', dragIcon: '🐦', color: '#00A8FF' },
+                { id: 'ikan', targetIcon: '<span style="opacity: 0.95;">🐟</span>', dragIcon: '🐟', color: '#FF4757' }
+            ],
+            bangun: [
+                { 
+                    id: 'segitiga', 
+                    targetIcon: `<svg viewBox="0 0 100 100" style="width: 78%; height: 78%; pointer-events: none; opacity: 0.95; filter: drop-shadow(0 0.4cqh 0.8cqh rgba(0,0,0,0.12));"><polygon points="50,20 85,80 15,80" fill="#FF6B6B" stroke="#ffffff" stroke-width="2"/></svg>`, 
+                    dragIcon: `<svg viewBox="0 0 100 100" style="width: 78%; height: 78%; pointer-events: none; filter: drop-shadow(0 0.4cqh 0.8cqh rgba(0,0,0,0.12));"><polygon points="50,20 85,80 15,80" fill="#FF6B6B" stroke="#ffffff" stroke-width="2"/></svg>`, 
+                    color: '#FF6B6B' 
+                }, 
+                { id: 'lingkaran', targetIcon: '<span style="opacity: 0.95;">🔵</span>', dragIcon: '🔵', color: '#4ECDC4' },
+                { id: 'kotak', targetIcon: '<span style="opacity: 0.95;">🟩</span>', dragIcon: '🟩', color: '#FFA502' }, 
+                { id: 'bintang', targetIcon: '<span style="opacity: 0.95;">⭐</span>', dragIcon: '⭐', color: '#FFD32D' },
+                { id: 'hati', targetIcon: '<span style="opacity: 0.95;">❤️</span>', dragIcon: '❤️', color: '#FF4757' }, 
+                { id: 'wajik', targetIcon: '<span style="opacity: 0.95;">🔶</span>', dragIcon: '🔶', color: '#FF9F43' },
+                { id: 'bulan', targetIcon: '<span style="opacity: 0.95;">🌙</span>', dragIcon: '🌙', color: '#FFEAA7' }, 
+                { 
+                    id: 'jajargenjang', 
+                    targetIcon: `<svg viewBox="0 0 100 100" style="width: 78%; height: 78%; pointer-events: none; opacity: 0.95; filter: drop-shadow(0 0.4cqh 0.8cqh rgba(0,0,0,0.12));"><polygon points="35,25 85,25 65,75 15,75" fill="#8B4513" stroke="#ffffff" stroke-width="2"/></svg>`, 
+                    dragIcon: `<svg viewBox="0 0 100 100" style="width: 78%; height: 78%; pointer-events: none; filter: drop-shadow(0 0.4cqh 0.8cqh rgba(0,0,0,0.12));"><polygon points="35,25 85,25 65,75 15,75" fill="#8B4513" stroke="#ffffff" stroke-width="2"/></svg>`, 
+                    color: '#8B4513' 
+                }, 
+                { id: 'layang', targetIcon: '<span style="opacity: 0.95;">🪁</span>', dragIcon: '🪁', color: '#128C7E' }, 
+                { id: 'oval', targetIcon: '<span style="opacity: 0.95;">🥚</span>', dragIcon: '🥚', color: '#E056FD' }
+            ],
+            warna: [
+                { 
+                    id: 'merah', 
+                    targetIcon: `<svg viewBox="0 0 100 100" style="width: 75%; height: 75%; pointer-events: none;"><circle cx="50" cy="50" r="40" fill="#FF6B6B" opacity="0.95" /></svg>`, 
+                    dragIcon: '🔴', 
+                    color: '#FF6B6B' 
+                },
+                { 
+                    id: 'biru', 
+                    targetIcon: `<svg viewBox="0 0 100 100" style="width: 75%; height: 75%; pointer-events: none;"><circle cx="50" cy="50" r="40" fill="#4ECDC4" opacity="0.95" /></svg>`, 
+                    dragIcon: '🔵', 
+                    color: '#4ECDC4' 
+                },
+                { 
+                    id: 'hijau', 
+                    targetIcon: `<svg viewBox="0 0 100 100" style="width: 75%; height: 75%; pointer-events: none;"><circle cx="50" cy="50" r="40" fill="#2ecc71" opacity="0.95" /></svg>`, 
+                    dragIcon: '🟢', 
+                    color: '#2ecc71' 
+                },
+                { 
+                    id: 'kuning', 
+                    targetIcon: `<svg viewBox="0 0 100 100" style="width: 75%; height: 75%; pointer-events: none;"><circle cx="50" cy="50" r="40" fill="#FFE66D" opacity="0.95" /></svg>`, 
+                    dragIcon: '🟡', 
+                    color: '#FFE66D' 
+                },
+                { 
+                    id: 'jingga', 
+                    targetIcon: `<svg viewBox="0 0 100 100" style="width: 75%; height: 75%; pointer-events: none;"><circle cx="50" cy="50" r="40" fill="#FF9F43" opacity="0.95" /></svg>`, 
+                    dragIcon: '🟠', 
+                    color: '#FF9F43' 
+                },
+                { 
+                    id: 'ungu', 
+                    targetIcon: `<svg viewBox="0 0 100 100" style="width: 75%; height: 75%; pointer-events: none;"><circle cx="50" cy="50" r="40" fill="#A55EEA" opacity="0.95" /></svg>`, 
+                    dragIcon: '🟣', 
+                    color: '#A55EEA' 
+                },
+                { 
+                    id: 'coklat', 
+                    targetIcon: `<svg viewBox="0 0 100 100" style="width: 75%; height: 75%; pointer-events: none;"><circle cx="50" cy="50" r="40" fill="#8B4513" opacity="0.95" /></svg>`, 
+                    dragIcon: '🟤', 
+                    color: '#8B4513' 
+                },
+                { 
+                    id: 'hitam', 
+                    targetIcon: `<svg viewBox="0 0 100 100" style="width: 75%; height: 75%; pointer-events: none;"><circle cx="50" cy="50" r="40" fill="#2F3542" opacity="0.95" /></svg>`, 
+                    dragIcon: '⚫', 
+                    color: '#2F3542' 
+                },
+                { 
+                    id: 'putih', 
+                    targetIcon: `<svg viewBox="0 0 100 100" style="width: 75%; height: 75%; pointer-events: none;"><circle cx="50" cy="50" r="40" fill="#ffffff" stroke="#bdc3c7" stroke-width="3" opacity="0.95" /></svg>`, 
+                    dragIcon: '⚪', 
+                    color: '#95a5a6' 
+                },
+                { 
+                    id: 'pink', 
+                    targetIcon: `<svg viewBox="0 0 100 100" style="width: 75%; height: 75%; pointer-events: none;"><path d="M50,30 C50,30 43,17 30,17 C18,17 10,27 10,40 C10,63 45,83 50,85 C55,83 90,63 90,40 C90,27 82,17 70,17 C57,17 50,30 50,30 Z" fill="#FF6B81" opacity="0.95" /></svg>`, 
+                    dragIcon: '💗', 
+                    color: '#FF6B81' 
+                }
+            ]
+        };
+
+        let currentMode = ''; let score = 0; let totalItems = 3; let soundEnabled = true;
+        let playTimeStart = null;
+        
+        /* === AUDIO ENGINE === */
+        let audioCtxInstance = null;
+        let bgmInterval; 
+        let isBgmRunning = false;
+        const bgmNotes = [261.63, 261.63, 392.00, 392.00, 440.00, 440.00, 392.00, 349.23, 349.23, 329.63, 329.63, 293.66, 293.66, 261.63];
+        let currentNoteIndex = 0;
+
+        function getAudioContext() {
+            if (!audioCtxInstance) {
+                audioCtxInstance = new (window.AudioContext || window.webkitAudioContext)();
+            }
+            if (audioCtxInstance.state === 'suspended') {
+                audioCtxInstance.resume();
+            }
+            return audioCtxInstance;
+        }
+
+        function startBGM() {
+            if (isBgmRunning) return; 
+            isBgmRunning = true;
+            
+            const audioCtx = getAudioContext();
+
+            bgmInterval = setInterval(() => {
+                if (!soundEnabled) return; 
+                try {
+                    const osc = audioCtx.createOscillator(); 
+                    const gainNode = audioCtx.createGain();
+                    
+                    osc.type = 'sine'; 
+                    osc.frequency.setValueAtTime(bgmNotes[currentNoteIndex], audioCtx.currentTime);
+                    
+                    gainNode.gain.setValueAtTime(0, audioCtx.currentTime);
+                    gainNode.gain.linearRampToValueAtTime(0.012, audioCtx.currentTime + 0.05); 
+                    gainNode.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.5);
+                    
+                    osc.connect(gainNode); 
+                    gainNode.connect(audioCtx.destination);
+                    
+                    osc.start(); 
+                    osc.stop(audioCtx.currentTime + 0.55);
+                    currentNoteIndex = (currentNoteIndex + 1) % bgmNotes.length;
+                } catch(e) {}
+            }, 600);
+        }
+
+        function showScreen(screenId) { document.querySelectorAll('.screen').forEach(s => s.classList.remove('active')); document.getElementById('screen-' + screenId).classList.add('active'); }
+        
+        function navTo(screen) { 
+            showScreen(screen); 
+            if (screen === 'win') {
+                playWinSound();
+            }
+        }
+        
+        function startApp() { tryFullscreen(); startBGM(); navTo('category'); }
+        function showInstructions() { document.getElementById('instruction-modal').style.display = 'flex'; }
+        function toggleFullscreen() { if (!document.fullscreenElement) { tryFullscreen(); } else { if (document.exitFullscreen) { document.exitFullscreen(); } } }
+        function tryFullscreen() { if (document.documentElement.requestFullscreen) { document.documentElement.requestFullscreen().catch(err => {}); } }
+        
+        function toggleSound() { 
+            soundEnabled = !soundEnabled; 
+            const icon = soundEnabled ? '🔊' : '🔇'; 
+            document.getElementById('btn-sound-home').innerText = icon; 
+            document.getElementById('btn-sound-game').innerText = icon; 
+            if (soundEnabled) {
+                getAudioContext();
+            }
+        }
+        
+        function shuffleArray(array) { for (let i = array.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [array[i], array[j]] = [array[j], array[i]]; } return array; }
+
+        function playSuccessSound() {
+            if (!soundEnabled) return;
+            try { 
+                const audioCtx = getAudioContext();
+                const now = audioCtx.currentTime;
+                const notes = [523.25, 659.25, 783.99, 1046.50]; 
+                notes.forEach((freq, index) => {
+                    const delay = index * 0.07; 
+                    const osc = audioCtx.createOscillator();
+                    const gainNode = audioCtx.createGain();
+                    
+                    osc.type = 'sine'; 
+                    osc.frequency.setValueAtTime(freq, now + delay);
+                    gainNode.gain.setValueAtTime(0, now + delay);
+                    gainNode.gain.linearRampToValueAtTime(0.15, now + delay + 0.02); 
+                    gainNode.gain.exponentialRampToValueAtTime(0.001, now + delay + 0.3); 
+                    
+                    osc.connect(gainNode);
+                    gainNode.connect(audioCtx.destination);
+                    osc.start(now + delay);
+                    osc.stop(now + delay + 0.32);
+                });
+            } catch(e) {}
+        }
+
+        function playWrongSound() {
+            if (!soundEnabled) return;
+            try { 
+                const audioCtx = getAudioContext();
+                const now = audioCtx.currentTime;
+                const osc = audioCtx.createOscillator(); 
+                const gain = audioCtx.createGain(); 
+                
+                osc.type = 'triangle'; 
+                osc.frequency.setValueAtTime(180, now); 
+                osc.frequency.linearRampToValueAtTime(80, now + 0.3); 
+                
+                gain.gain.setValueAtTime(0, now);
+                gain.gain.linearRampToValueAtTime(0.2, now + 0.02); 
+                gain.gain.exponentialRampToValueAtTime(0.001, now + 0.3); 
+                
+                osc.connect(gain); 
+                gain.connect(audioCtx.destination); 
+                osc.start(now); 
+                osc.stop(now + 0.3); 
+            } catch(e) {}
+        }
+
+        function playWinSound() {
+            if (!soundEnabled) return;
+            try {
+                const audioCtx = getAudioContext();
+                const now = audioCtx.currentTime;
+                const fanfareNotes = [523.25, 659.25, 783.99, 1046.50, 1318.51, 1567.98, 2093.00];
+                fanfareNotes.forEach((freq, index) => {
+                    const delay = index * 0.08;
+                    const osc = audioCtx.createOscillator();
+                    const gainNode = audioCtx.createGain();
+                    
+                    osc.type = 'sine';
+                    osc.frequency.setValueAtTime(freq, now + delay);
+                    gainNode.gain.setValueAtTime(0, now + delay);
+                    gainNode.gain.linearRampToValueAtTime(0.1, now + delay + 0.02);
+                    gainNode.gain.exponentialRampToValueAtTime(0.001, now + delay + 0.4);
+                    
+                    osc.connect(gainNode);
+                    gainNode.connect(audioCtx.destination);
+                    osc.start(now + delay);
+                    osc.stop(now + delay + 0.42);
+                });
+            } catch(e) {}
+        }
+
+        function createParticles(targetElement) {
+            const rect = targetElement.getBoundingClientRect(); 
+            const centerX = rect.left + rect.width / 2; 
+            const centerY = rect.top + rect.height / 2; 
+            
+            const emojis = ['\u2B50', '\u2728', '\uD83C\uDF89', '\uD83C\uDF88', '\uD83C\uDF1F'];
+
+            for (let i = 0; i < 10; i++) {
+                const p = document.createElement('div'); 
+                p.className = 'particle'; 
+                p.innerHTML = emojis[Math.floor(Math.random() * emojis.length)]; 
+                document.body.appendChild(p);
+                
+                p.style.left = (centerX - 20) + 'px'; 
+                p.style.top = (centerY - 20) + 'px';
+                
+                const angle = (Math.PI * 2 / 10) * i + (Math.random() * 0.5); 
+                const distance = 80 + Math.random() * 50;
+                
+                p.style.setProperty('--tx', `${Math.cos(angle) * distance}px`); 
+                p.style.setProperty('--ty', `${Math.sin(angle) * distance}px`); 
+                p.style.setProperty('--rot', `${(Math.random() - 0.5) * 360}deg`);
+                
+                setTimeout(() => p.remove(), 800);
+            }
+        }
+
+        function initGame(mode) {
+            currentMode = mode; score = 0; let items = [...GAME_DATA[mode]]; totalItems = items.length;
+            playTimeStart = Date.now();
+            const gameArea = document.querySelector('.game-area'); const targetsContainer = document.getElementById('targets-container'); const draggablesContainer = document.getElementById('draggables-container');
+            if (totalItems > 3) { gameArea.classList.add('many-items'); } else { gameArea.classList.remove('many-items'); }
+            targetsContainer.innerHTML = ''; draggablesContainer.innerHTML = '';
+            let shuffledItems = shuffleArray([...items]);
+
+            items.forEach(item => {
+                const dropZone = document.createElement('div'); 
+                dropZone.className = 'drop-zone'; 
+                dropZone.dataset.id = item.id; 
+                dropZone.innerHTML = item.targetIcon;
+                if(mode === 'huruf' || mode === 'angka' || mode === 'hijaiyah') {
+                    dropZone.style.color = item.color;
+                }
+                targetsContainer.appendChild(dropZone);
+            });
+
+            shuffledItems.forEach(item => {
+                const dragItem = document.createElement('div'); 
+                dragItem.className = 'drag-item'; 
+                dragItem.dataset.id = item.id; 
+                dragItem.innerHTML = item.dragIcon;
+                dragItem.style.borderColor = item.color; 
+                dragItem.style.color = item.color;
+                setupDragEvents(dragItem); 
+                draggablesContainer.appendChild(dragItem);
+            });
+            navTo('game');
+        }
+
+        function resetCurrentGame() { if(currentMode) initGame(currentMode); }
+        
+        function updateProgress() { 
+            if (score === totalItems) { 
+                document.getElementById('name-warning').style.display = 'none';
+                document.getElementById('player-name').classList.remove('border-red-500');
+                setTimeout(() => { navTo('win'); }, 1000); 
+            } 
+        }
+
+        /* === DRAG AND DROP === */
+        function setupDragEvents(el) {
+            let startX, startY;
+            let currentDropZone = null;
+
+            el.addEventListener('pointerdown', (e) => {
+                if (el.classList.contains('snapped')) return; 
+                e.preventDefault();
+                try { el.setPointerCapture(e.pointerId); } catch(err) {}
+                startX = e.clientX;
+                startY = e.clientY;
+                el.classList.add('dragging');
+            });
+
+            el.addEventListener('pointermove', (e) => {
+                if (!el.classList.contains('dragging')) return;
+                e.preventDefault();
+                let dx = e.clientX - startX;
+                let dy = e.clientY - startY;
+                el.style.transform = `translate3d(${dx}px, ${dy}px, 0) scale(1.2) rotate(5deg)`;
+
+                const dragRect = el.getBoundingClientRect();
+                const dragCenterX = dragRect.left + dragRect.width / 2;
+                const dragCenterY = dragRect.top + dragRect.height / 2;
+                let isHovering = false;
+                
+                document.querySelectorAll('.drop-zone:not(.filled)').forEach(zone => {
+                    const zoneRect = zone.getBoundingClientRect();
+                    const paddingTolerance = 35;
+                    if (
+                        dragCenterX > zoneRect.left - paddingTolerance &&
+                        dragCenterX < zoneRect.right + paddingTolerance &&
+                        dragCenterY > zoneRect.top - paddingTolerance &&
+                        dragCenterY < zoneRect.bottom + paddingTolerance
+                    ) {
+                        zone.classList.add('hovered');
+                        currentDropZone = zone;
+                        isHovering = true;
+                    } else {
+                        zone.classList.remove('hovered');
+                    }
+                });
+                if (!isHovering) currentDropZone = null;
+            });
+
+            el.addEventListener('pointerup', (e) => {
+                if (!el.classList.contains('dragging')) return;
+                el.classList.remove('dragging');
+                try { el.releasePointerCapture(e.pointerId); } catch(err) {}
+                document.querySelectorAll('.drop-zone').forEach(z => z.classList.remove('hovered'));
+
+                if (currentDropZone) {
+                    if (currentDropZone.dataset.id === el.dataset.id) {
+                        snapToZone(el, currentDropZone); 
+                        playSuccessSound(); 
+                        createParticles(currentDropZone); 
+                        score++; 
+                        updateProgress();
+                    } else {
+                        playWrongSound(); 
+                        bounceBack(el);
+                    }
+                } else {
+                    bounceBack(el, false);
+                }
+                
+                currentDropZone = null;
+            });
+            
+            el.addEventListener('pointercancel', (e) => {
+               if (el.classList.contains('dragging')) {
+                   el.classList.remove('dragging');
+                   try { el.releasePointerCapture(e.pointerId); } catch(err) {}
+                   bounceBack(el, false);
+               }
+            });
+        }
+
+        function snapToZone(dragEl, zoneEl) {
+            dragEl.style.transform = ''; 
+            dragEl.classList.add('snapped'); 
+            zoneEl.innerHTML = ''; 
+            zoneEl.appendChild(dragEl); 
+            zoneEl.classList.add('filled');
+        }
+
+        function bounceBack(el, playAnim = true) {
+            el.style.transform = ''; 
+            if (playAnim) { 
+                el.classList.add('shake-anim'); 
+                setTimeout(() => { el.classList.remove('shake-anim'); }, 400); 
+            }
+        }
+
+        /* === INTEGRASI BACKEND & FALLBACK LOKAL === */
+        let localScores = [];
+
+        async function saveScoreCloud() {
+            const nameInput = document.getElementById('player-name');
+            const warningEl = document.getElementById('name-warning');
+            const username = nameInput.value.trim();
+
+            if (!username) {
+                warningEl.innerText = "⚠️ Tulis namamu dahulu ya!";
+                warningEl.style.display = 'block';
+                nameInput.classList.add('border-red-500');
+                nameInput.focus();
+                return;
+            }
+
+            warningEl.style.display = 'none';
+            nameInput.classList.remove('border-red-500');
+
+            const playDuration = Math.round((Date.now() - playTimeStart) / 1000);
+            const scorePayload = {
+                name: username,
+                mode: currentMode || "angka",
+                score: score || 10,
+                time: playDuration
+            };
+
+            try {
+                const response = await fetch(`/api/score`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(scorePayload)
+                });
+
+                if (response.ok) {
+                    nameInput.value = '';
+                    showLeaderboard();
+                } else {
+                    throw new Error("Respon server tidak 200 OK");
+                }
+            } catch (error) {
+                localScores.push(scorePayload);
+                localScores.sort((a, b) => a.time - b.time);
+                nameInput.value = '';
+                showLeaderboard(true);
+            }
+        }
+
+        async function showLeaderboard(forceLocal = false) {
+            document.getElementById('leaderboard-modal').style.display = 'flex';
+            const listContainer = document.getElementById('leaderboard-list');
+            listContainer.innerHTML = '<p class="text-gray-500 text-center">Sedang memuat peringkat...</p>';
+
+            if (forceLocal) {
+                renderLocalScores(listContainer);
+                return;
+            }
+
+            try {
+                const response = await fetch(`/api/scores`);
+                if (response.ok) {
+                    const scores = await response.json();
+                    renderScoreRows(scores, listContainer);
+                } else {
+                    throw new Error("Gagal memuat API");
+                }
+            } catch (error) {
+                renderLocalScores(listContainer);
+            }
+        }
+
+        function renderLocalScores(container) {
+            container.innerHTML = '';
+            if (localScores.length === 0) {
+                container.innerHTML = '<p class="text-gray-500 text-center">Belum ada skor yang tersimpan. Ayo selesaikan permainan!</p>';
+                return;
+            }
+            renderScoreRows(localScores, container);
+        }
+
+        function renderScoreRows(scoresList, container) {
+            container.innerHTML = '';
+            const topScores = scoresList.slice(0, 10);
+            topScores.forEach((entry, idx) => {
+                const rankEmoji = idx === 0 ? '🥇' : idx === 1 ? '🥈' : idx === 2 ? '🥉' : '✨';
+                const row = document.createElement('div');
+                row.className = "flex justify-between items-center bg-gray-100 p-3 rounded-lg border-l-4 border-teal-500 text-base md:text-lg mb-1";
+                row.innerHTML = `
+                    <span class="font-bold text-gray-800">${rankEmoji} ${idx + 1}. ${entry.name}</span>
+                    <span class="text-gray-600 text-sm">Kat: ${entry.mode.toUpperCase()} | ⏱️ ${entry.time}s</span>
+                `;
+                container.appendChild(row);
+            });
+        }
+    </script>
+</body>
+</html>
